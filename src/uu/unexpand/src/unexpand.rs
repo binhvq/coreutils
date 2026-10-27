@@ -431,6 +431,18 @@ enum CharType {
     Other,
 }
 
+/// Whether `buf` starts with a multibyte (non-ASCII) blank in UTF-8 mode.
+///
+/// Such a blank can start a convertible leading run, so code that skips
+/// processing based on `buf[0]` not being an ASCII blank must check this
+/// first. Cheap: only inspects the first character.
+fn leading_wide_blank(options: &Options, buf: &[u8]) -> bool {
+    options.utf8
+        && !buf.is_empty()
+        && !buf[0].is_ascii()
+        && classify_char_at(true, buf, 0).0 == CharType::Space
+}
+
 /// A multibyte blank is a horizontal space other than ASCII space/tab, i.e. a
 /// character for which `iswblank` is true in a UTF-8 locale. Such a blank
 /// participates in tab conversion (its columns can be absorbed into a tab), so
@@ -514,7 +526,8 @@ fn unexpand_buf(
         // and the line doesn't start with spaces, just write it directly
         if !options.aflag
             && !buf.is_empty()
-            && ((buf[0] != b' ' && buf[0] != b'\t') || !print_state.leading)
+            && ((buf[0] != b' ' && buf[0] != b'\t' && !leading_wide_blank(options, buf))
+                || !print_state.leading)
         {
             write_tabs(output, tab_config, print_state, options.aflag)?;
             print_state.scol = print_state.col;

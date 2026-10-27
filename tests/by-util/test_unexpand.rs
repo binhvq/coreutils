@@ -450,3 +450,44 @@ fn test_buffered_read_edgecase_behaviour() {
             .stdout_only(String::from_utf8(expected).unwrap());
     }
 }
+
+#[test]
+fn unexpand_leading_wide_blank_converted_with_trailing_newline() {
+    // In default mode (no -a), a line starting with Unicode blanks must still
+    // be converted when the buffer ends with a newline; the fast path must not
+    // copy the line verbatim just because the first byte is not an ASCII blank.
+    new_ucmd!()
+        .pipe_in("\u{3000}\u{3000}\u{3000}\u{3000}X\n")
+        .succeeds()
+        .stdout_is("\tX\n");
+}
+
+#[test]
+fn unexpand_leading_wide_blank_first_only_converted_with_trailing_newline() {
+    // --first-only exercises the same fast path as default mode.
+    new_ucmd!()
+        .arg("--first-only")
+        .pipe_in("\u{3000}\u{3000}\u{3000}\u{3000}X\n")
+        .succeeds()
+        .stdout_is("\tX\n");
+}
+
+#[test]
+fn unexpand_leading_wide_blank_no_tabstop_reached_kept_verbatim() {
+    // A run that does not reach a tab stop is emitted verbatim, also when the
+    // line ends with a newline.
+    new_ucmd!()
+        .pipe_in("\u{3000}X\n")
+        .succeeds()
+        .stdout_is("\u{3000}X\n");
+}
+
+#[test]
+fn unexpand_non_blank_wide_char_line_still_copied_verbatim() {
+    // A line starting with a wide non-blank character must not be mistakenly
+    // routed into the general loop's blank handling (fast path stays valid).
+    new_ucmd!()
+        .pipe_in("\u{4e2d}\u{6587}X\n")
+        .succeeds()
+        .stdout_is("\u{4e2d}\u{6587}X\n");
+}
