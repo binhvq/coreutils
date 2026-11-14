@@ -552,7 +552,6 @@ fn test_specifier_in_an_earlier_tabs_value(#[case] args: &[&str], #[case] expect
 fn test_specifier_in_two_tabs_values() {
     new_ucmd!()
         .args(&["-t", "/4", "-t", "/5"])
-        .pipe_in("a\tb\n")
         .fails_with_code(1)
         .stderr_is("expand: '/' specifier only allowed with the last value\n");
 }
